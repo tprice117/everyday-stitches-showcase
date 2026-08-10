@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        .form-wrap p { margin: 8px 0; }
+        .saved { color: green; font-weight: bold; }
+        .errornote { color: #b00; }
+    </style>
+
+    <h2>Add New Pattern</h2>
+    <p><a href="{% url 'index' %}">&larr; Back to Dashboard</a></p>
+
+    {% if saved %}<p class="saved">Added pattern &ldquo;{{ saved }}&rdquo;. Add another below.</p>{% endif %}
+
+    {% if form.non_field_errors %}
+        <p class="errornote">{{ form.non_field_errors }}</p>
+    {% endif %}
+
+    <div class="form-wrap">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Add Pattern</button>
+        </form>
+    </div>
+{% endblock %}

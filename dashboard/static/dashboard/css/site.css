@@ -1,0 +1,252 @@
+/* Everyday Stitches — shared site styles.
+ *
+ * Design tokens plus sensible defaults for the plain markup the app renders:
+ * Django ModelForms (form.as_p), tables, buttons, message blocks.
+ *
+ * Note on layering: each page's own <style> block loads AFTER this file, and CSS
+ * cascades per-property, so page rules refine these defaults rather than replace
+ * them (e.g. the dashboard's .kpi keeps its own border but inherits the shadow
+ * defined here). Keep selectors here low-specificity so that stays true.
+ */
+
+:root {
+    --bg:            #f6f7f9;
+    --surface:       #ffffff;
+    --surface-alt:   #fafbfc;
+    --border:        #e4e7eb;
+    --border-strong: #cbd2d9;
+    --text:          #1f2933;
+    --text-muted:    #6b7280;
+    --accent:        #367ab3;   /* matches the existing chart/link blue */
+    --accent-dark:   #2c6494;
+    --accent-soft:   #eaf2f9;
+    --danger:        #b3261e;
+    --danger-soft:   #fdecea;
+    --success:       #1e7a3d;
+    --success-soft:  #e8f5ec;
+    --radius:        8px;
+    --radius-sm:     6px;
+    --shadow-sm:     0 1px 2px rgba(16, 24, 40, .05);
+    --shadow:        0 1px 3px rgba(16, 24, 40, .08), 0 1px 2px rgba(16, 24, 40, .04);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+
+.container {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* Deliberately NOT sticky: the inventory table uses position:sticky headers at
+   top:0, and a sticky site header would sit on top of them. */
+.site-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 26px;
+}
+
+.site-header .container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 58px;
+}
+
+.brand {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.brand:hover { color: var(--accent-dark); text-decoration: none; }
+
+main.container { padding-bottom: 56px; }
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+
+h1, h2, h3, h4 {
+    line-height: 1.25;
+    margin: 0 0 10px;
+    color: var(--text);
+    font-weight: 650;
+}
+
+h2 { font-size: 1.5rem; margin-top: 2px; }
+h3 { font-size: 1.08rem; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+/* Neutral by default — dark text on a light surface. Important: pages like the
+   dashboard menu override only `background`, so the default text colour must
+   stay readable on a light background (a white-text default would vanish). */
+button, input[type="submit"], .btn {
+    font: inherit;
+    padding: 8px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: background .12s ease, border-color .12s ease;
+}
+
+button:hover, input[type="submit"]:hover, .btn:hover {
+    background: var(--surface-alt);
+    border-color: var(--accent);
+}
+
+button:active, input[type="submit"]:active { transform: translateY(1px); }
+
+button:focus-visible, input[type="submit"]:focus-visible, a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* The primary action on a page. */
+.submit-btn, .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+.submit-btn:hover, .btn-primary:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    color: #fff;
+}
+
+/* ── Forms ──────────────────────────────────────────────────────────────── */
+
+.form-wrap {
+    max-width: 640px;
+    padding: 20px 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+/* Django's form.as_p wraps each field in a <p>; stack label above input. */
+.form-wrap p {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0 0 14px;
+}
+
+/* Checkboxes read better inline with their label. */
+.form-wrap p:has(input[type="checkbox"]) {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-wrap label {
+    font-size: .87rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="date"],
+input[type="password"], input[type="search"], select, textarea {
+    font: inherit;
+    padding: 8px 10px;
+    max-width: 100%;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input[type="checkbox"], input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+}
+
+.helptext, .form-wrap .helptext {
+    font-size: .82rem;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+
+table { border-collapse: collapse; width: 100%; background: var(--surface); }
+
+th, td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+thead th {
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    font-size: .85rem;
+    font-weight: 650;
+    border-bottom: 1px solid var(--border-strong);
+}
+
+tbody tr:hover { background: var(--accent-soft); }
+
+/* ── Message blocks ─────────────────────────────────────────────────────── */
+
+.saved {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--success-soft);
+    border: 1px solid #bfe3ca;
+    color: var(--success);
+}
+
+.errornote {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--danger-soft);
+    border: 1px solid #f0b3ad;
+    color: var(--danger);
+}
+
+.hint { color: var(--text-muted); font-size: .9rem; }
+
+/* ── Cards (the dashboard defines its own borders; add depth here) ──────── */
+
+.kpi, .chart-card { box-shadow: var(--shadow); }
+
+/* ── Small screens ──────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+    .container { padding: 0 14px; }
+    body { font-size: 14px; }
+    h2 { font-size: 1.3rem; }
+}

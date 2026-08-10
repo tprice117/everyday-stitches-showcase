@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        .form-wrap p { margin: 10px 0; }
+        table { border-collapse: collapse; margin-top: 8px; }
+        th, td { border: 1px solid #bbb; padding: 5px 9px; text-align: left; }
+        th { background: #f0f0f0; }
+    </style>
+
+    <h2>Edit PO {{ order.customers_po_number|default:order.order_id }}</h2>
+    <p><a href="{% url 'editPO' %}">&larr; Back to PO list</a></p>
+
+    <div class="form-wrap">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Save Changes</button>
+        </form>
+    </div>
+
+    <h3>Line Items</h3>
+    <table>
+        <tr><th>Pattern</th><th>Qty</th><th>Line Total</th><th>Shipped</th></tr>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.pattern.sku }} — {{ item.pattern.pattern_name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.line_total|default:"—" }}</td>
+            <td>{% if item.shipped %}Yes{% else %}No{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">No line items on this order.</td></tr>
+        {% endfor %}
+    </table>
+    <p><small>Line-item editing isn't available here yet — this form edits the order details.</small></p>
+{% endblock %}

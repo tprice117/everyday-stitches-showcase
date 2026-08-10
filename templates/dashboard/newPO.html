@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .item_entry {margin-bottom: 10px;}
+</style>   
+<h2>Enter New Purchase Order</h2>
+
+<p><a href="{% url 'index' %}">&larr; Back to Dashboard</a></p>
+
+<form name="POForm" method="post" action="{% url 'newPO' %}">
+    {% csrf_token %}
+    {{ form.date_ordered.label_tag }} {{ form.date_ordered }}
+    {{ form.source.label_tag }} {{ form.source }}
+    {{ form.customer.label_tag }} {{ form.customer }}
+    {{ form.customers_po_number.label_tag }} {{ form.customers_po_number }}
+
+    <br><br>
+    {{ form.note.label_tag }}<br>
+    {{ form.note }}
+
+    <br><br>
+    <label>
+        <input type="checkbox" id="toggle-altship"> Ship to a different address?
+    </label>
+    <div id="altship-fields" style="display:none; margin-top:8px; padding:8px; border:1px solid #ccc; max-width:520px;">
+        <p style="margin-top:0;"><small>Leave blank to ship to the customer's default address.</small></p>
+        {{ form.ship_name.label_tag }} {{ form.ship_name }}<br><br>
+        {{ form.ship_street1.label_tag }} {{ form.ship_street1 }}<br>
+        {{ form.ship_street2.label_tag }} {{ form.ship_street2 }}<br><br>
+        {{ form.ship_city.label_tag }} {{ form.ship_city }}
+        {{ form.ship_state.label_tag }} {{ form.ship_state }}<br><br>
+        {{ form.ship_zip.label_tag }} {{ form.ship_zip }}
+        {{ form.ship_billing.label_tag }} {{ form.ship_billing }}<br>
+    </div>
+
+    <br><h2>Select Items</h2>
+    <div id="product-section">
+        <div class="product-entry">
+            {{ form.product.label_tag }}
+            <select name="product" class="product-dropdown">
+                <option value="">Select an Item</option>
+                {% for product in form.product.field.queryset %}
+                    <option value="{{ product.pattern_id }}">{{ product.pattern_name }}</option>
+                {% endfor %}
+            </select>
+            {{ form.quantity.label_tag }} <input type="number" name="quantity" class="quantity-input" />
+            <button type="button" onclick="removeProductEntry(this)">Remove Item</button>
+        </div>
+    </div>
+    <br>
+    <button type="button" onclick="addProductEntry()">Add Another Item</button>
+
+    <!-- Hidden fields to store selections -->
+    <input type="hidden" name="product_list" id="products" />
+    <input type="hidden" name="quantity_list" id="quantities" />
+    
+    <button type="submit">Submit</button>
+</form>
+
+{{ customer_bucket_map|json_script:"customer-bucket-data" }}
+
+<script>
+    function addProductEntry() {
+        const productSection = document.getElementById('product-section');
+        const newEntry = document.createElement('div');
+        newEntry.classList.add('product-entry');
+        newEntry.innerHTML = `
+            <select name="product" class="product-dropdown">
+                <option value="">Select an Item</option>
+                {% for product in form.product.field.queryset %}
+                    <option value="{{ product.pattern_id }}">{{ product.pattern_name }}</option>
+                {% endfor %}
+            </select>
+            {{ form.quantity.label_tag }} <input type="number" name="quantity" class="quantity-input" />
+            <button type="button" onclick="removeProductEntry(this)">Remove Item</button>
+        `;
+        productSection.appendChild(newEntry);
+    }
+
+    function removeProductEntry(button) {
+        button.parentElement.remove();
+    }
+
+    // Toggle the alternate ship-to address fields.
+    const toggleAlt = document.getElementById('toggle-altship');
+    const altFields = document.getElementById('altship-fields');
+    if (toggleAlt && altFields) {
+        toggleAlt.addEventListener('change', function () {
+            altFields.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    // Narrow the customer list to those belonging to the selected sales channel.
+    const customerBucket = JSON.parse(document.getElementById('customer-bucket-data').textContent);
+    const customerSelect = document.getElementById('id_customer');
+    const sourceSelect = document.getElementById('id_source');
+    if (customerSelect && sourceSelect) {
+        // Cache the full option list once so we can rebuild it as the channel changes.
+        const allOptions = Array.from(customerSelect.options).map(o => ({ value: o.value, text: o.text }));
+        function filterCustomers() {
+            const channel = sourceSelect.value;
+            const current = customerSelect.value;
+            customerSelect.innerHTML = '';
+            allOptions.forEach(o => {
+                // Keep the blank placeholder, plus customers in the chosen channel.
+                if (o.value === '' || customerBucket[o.value] === channel) {
+                    const opt = document.createElement('option');
+                    opt.value = o.value;
+                    opt.text = o.text;
+                    customerSelect.appendChild(opt);
+                }
+            });
+            // Preserve the current selection if it's still valid for this channel.
+            if (Array.from(customerSelect.options).some(o => o.value === current)) {
+                customerSelect.value = current;
+            }
+        }
+        sourceSelect.addEventListener('change', filterCustomers);
+        filterCustomers();
+    }
+
+    document.querySelector('form').addEventListener('submit', function(event) {
+        const products = [];
+        const quantities = [];
+        const entries = document.querySelectorAll('.product-entry');
+
+        entries.forEach(function(entry) {
+            const productSelect = entry.querySelector('select[name="product"]');
+            const quantityInput = entry.querySelector('input[name="quantity"]');
+            // Ensure both product and quantity are selected and not empty
+            if (productSelect.value && quantityInput.value) {
+                products.push(productSelect.value);
+                quantities.push(quantityInput.value);
+            }
+        });
+
+        // Join the array values and set them to the hidden fields
+        document.getElementById('products').value = products.join(',');
+        document.getElementById('quantities').value = quantities.join(',');
+    });
+</script>
+{% endblock %}
+

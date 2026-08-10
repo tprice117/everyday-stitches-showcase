@@ -1,0 +1,554 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        .menu {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            max-width: 640px;
+            margin: 20px 0;
+        }
+        .menu a { text-decoration: none; }
+        .menu button {
+            width: 100%;
+            padding: 18px 12px;
+            font-size: 1em;
+            cursor: pointer;
+            border: 1px solid #888;
+            border-radius: 8px;
+            background: #f4f4f4;
+        }
+        .menu button:hover { background: #e2e2e2; }
+        .group { max-width: 640px; margin-bottom: 20px; }
+        .group h3 {
+            margin: 0 0 6px 0;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #ccc;
+            color: #333;
+        }
+        .group .menu { margin: 0; }
+        .very_low { color: red; }
+        .low { color: blue; }
+        .low-inv-list { margin: 0; padding-left: 20px; line-height: 1.7; }
+        .alert-banner {
+            max-width: 860px; margin: 14px 0; padding: 12px 16px;
+            background: #fdecea; border: 1px solid #f0b3ad; border-radius: 8px;
+            color: #8a1c12; line-height: 1.6;
+        }
+        .alert-banner a { color: #8a1c12; font-weight: 700; }
+        .inv-table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+        .inv-table th, .inv-table td { border-bottom: 1px solid #e2e2e2; padding: 5px 10px; text-align: left; }
+        .inv-table thead th {
+            position: sticky; top: 0; background: #f4f4f4; z-index: 1;
+            border-bottom: 1px solid #bbb;
+        }
+        .inv-table th.sortable { cursor: pointer; user-select: none; }
+        .inv-table th.sortable:hover { background: #e7e7e7; }
+        .inv-table .arrow { color: #367ab3; }
+        .topbar { color: #555; }
+
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            max-width: 860px;
+            margin: 16px 0;
+        }
+        .kpi {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 14px 16px;
+            background: #fafafa;
+        }
+        .kpi .value { font-size: 1.6em; font-weight: 700; color: #222; }
+        .kpi .label { font-size: 0.85em; color: #666; margin-top: 2px; }
+        .chart-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            background: #fff;
+            max-width: 860px;
+            margin: 0 0 24px 0;
+        }
+        .chart-card h3 { margin: 0 0 10px 0; color: #333; }
+        /* Fixed-height, position:relative wrapper prevents the Chart.js
+           responsive resize feedback loop (canvas growing on every tick). */
+        .chart-wrap { position: relative; height: 320px; width: 100%; }
+
+        /* Carousel: slides sit side-by-side inside a clipped viewport and are
+           moved with translateX. Slides are never display:none, so every chart
+           canvas keeps a real size and renders correctly even while off-screen. */
+        .carousel { max-width: 860px; margin: 0 0 24px 0; }
+        .carousel-viewport { overflow: hidden; }
+        .carousel-track {
+            display: flex;
+            transition: transform 0.35s ease;
+        }
+        .carousel-slide { flex: 0 0 100%; box-sizing: border-box; }
+        .carousel-slide .chart-card { margin: 0; max-width: none; }
+        .carousel-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 10px;
+        }
+        .carousel-controls button {
+            border: 1px solid #888;
+            background: #f4f4f4;
+            border-radius: 6px;
+            width: 34px;
+            height: 34px;
+            font-size: 1.1em;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .carousel-controls button:hover { background: #e2e2e2; }
+        .carousel-dots { display: flex; gap: 8px; }
+        .carousel-dots .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: none;
+            padding: 0;
+            background: #ccc;
+            cursor: pointer;
+        }
+        .carousel-dots .dot.active { background: #367ab3; }
+    </style>
+
+    <h2>Dashboard</h2>
+
+    {% if print_alerts %}
+        <div class="alert-banner">
+            {% for a in print_alerts %}
+                <div><b>{{ a.count }}</b> print job{{ a.count|pluralize }}
+                     {{ a.count|pluralize:"is,are" }} {{ a.status }}.</div>
+            {% endfor %}
+            <a href="{% url 'printJobs' %}">View print jobs &rarr;</a>
+        </div>
+    {% endif %}
+
+    <div class="kpis">
+        <div class="kpi">
+            <div class="value">${{ total_revenue|floatformat:0 }}</div>
+            <div class="label">Revenue (last 12 mo)</div>
+        </div>
+        <div class="kpi">
+            <div class="value">{{ total_orders }}</div>
+            <div class="label">Orders (last 12 mo)</div>
+        </div>
+        <div class="kpi">
+            <div class="value">${{ avg_order|floatformat:2 }}</div>
+            <div class="label">Avg order value</div>
+        </div>
+        <div class="kpi">
+            <div class="value">${{ this_month_revenue|floatformat:0 }}</div>
+            <div class="label">{{ this_month_label }} revenue</div>
+        </div>
+    </div>
+
+    <div class="carousel" id="chartCarousel">
+        <div class="carousel-viewport">
+            <div class="carousel-track">
+                <div class="carousel-slide">
+                    <div class="chart-card">
+                        <h3>Monthly Sales</h3>
+                        <div class="chart-wrap">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-slide">
+                    <div class="chart-card">
+                        <h3>Sales by Channel (% of monthly total)</h3>
+                        <div class="chart-wrap">
+                            <canvas id="channelChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-slide">
+                    <div class="chart-card">
+                        <h3>Top Patterns by Revenue, by Channel (last 12 mo)</h3>
+                        <div class="chart-wrap">
+                            <canvas id="topPatternsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-slide">
+                    <div class="chart-card">
+                        <h3>Top Patterns by Count, by Channel (units sold, last 12 mo)</h3>
+                        <div class="chart-wrap">
+                            <canvas id="topCountChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-slide">
+                    <div class="chart-card">
+                        <h3>Low Inventory</h3>
+                        <div class="chart-wrap" style="overflow-y:auto;">
+                            <ul class="low-inv-list">
+                                {% for pattern in patterns %}
+                                    <li class="{% if pattern.inventory < 15 %}very_low{% else %}low{% endif %}">
+                                        {{ pattern.pattern_name }}: {{ pattern.inventory }}
+                                    </li>
+                                {% empty %}
+                                    <li>No patterns are low on inventory.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="carousel-slide">
+                    <div class="chart-card">
+                        <h3>Inventory</h3>
+                        <div class="chart-wrap" style="overflow:auto;">
+                            <table class="inv-table" id="inventoryTable">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-type="num">Count<span class="arrow"></span></th>
+                                        <th class="sortable" data-type="str">Pattern Name<span class="arrow"></span></th>
+                                        <th>SKU</th>
+                                        <th>EAN</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in inventory_rows %}
+                                    <tr>
+                                        <td>{{ p.inventory }}</td>
+                                        <td>{{ p.pattern_name|default:"—" }}</td>
+                                        <td>{{ p.sku }}</td>
+                                        <td>{{ p.ean|default:"—" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="carousel-controls">
+            <button type="button" data-carousel-prev aria-label="Previous chart">&#8249;</button>
+            <div class="carousel-dots"></div>
+            <button type="button" data-carousel-next aria-label="Next chart">&#8250;</button>
+        </div>
+    </div>
+
+    {{ chart_data|json_script:"sales-data" }}
+    {{ channel_data|json_script:"channel-data" }}
+    {{ top_patterns_data|json_script:"top-patterns-data" }}
+    {{ top_count_data|json_script:"top-count-data" }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        (function () {
+            const data = JSON.parse(document.getElementById('sales-data').textContent);
+            const ctx = document.getElementById('salesChart');
+            new Chart(ctx, {
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Revenue ($)',
+                            data: data.revenue,
+                            backgroundColor: 'rgba(54, 122, 179, 0.75)',
+                            borderRadius: 4,
+                            yAxisID: 'y',
+                            order: 2,
+                        },
+                        {
+                            type: 'line',
+                            label: 'Orders',
+                            data: data.orders,
+                            borderColor: 'rgba(214, 122, 40, 0.9)',
+                            backgroundColor: 'rgba(214, 122, 40, 0.9)',
+                            tension: 0.3,
+                            yAxisID: 'y1',
+                            order: 1,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: {
+                            position: 'left',
+                            title: { display: true, text: 'Revenue ($)' },
+                            ticks: { callback: (v) => '$' + v.toLocaleString() },
+                        },
+                        y1: {
+                            position: 'right',
+                            title: { display: true, text: 'Orders' },
+                            grid: { drawOnChartArea: false },
+                            ticks: { precision: 0 },
+                        },
+                    },
+                },
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            const data = JSON.parse(document.getElementById('channel-data').textContent);
+            const palette = [
+                'rgba(54, 122, 179, 0.9)',   // blue
+                'rgba(214, 122, 40, 0.9)',   // orange
+                'rgba(76, 160, 88, 0.9)',    // green
+                'rgba(180, 70, 150, 0.9)',   // magenta
+                'rgba(150, 120, 60, 0.9)',   // tan
+                'rgba(120, 100, 200, 0.9)',  // purple
+                'rgba(200, 70, 70, 0.9)',    // red
+            ];
+            const datasets = data.series.map((s, i) => {
+                const color = palette[i % palette.length];
+                return {
+                    label: s.name,
+                    data: s.data,
+                    borderColor: color,
+                    backgroundColor: color,
+                    tension: 0.3,
+                    pointRadius: 2,
+                };
+            });
+            new Chart(document.getElementById('channelChart'), {
+                type: 'line',
+                data: { labels: data.labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y + '%',
+                            },
+                        },
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: { display: true, text: '% of monthly revenue' },
+                            ticks: { callback: (v) => v + '%' },
+                        },
+                    },
+                },
+            });
+        })();
+    </script>
+    <script>
+        // Shared builder for the two "top patterns" charts: horizontal bars
+        // stacked by sales channel. Bars stay sorted by total (descending), and
+        // when a channel is toggled off in the legend the rows RE-SORT by the
+        // remaining visible channels so the chart is always descending.
+        function makeTopStackedChart(canvasId, data, cfg) {
+            const palette = [
+                'rgba(54, 122, 179, 0.9)',   // blue
+                'rgba(214, 122, 40, 0.9)',   // orange
+                'rgba(76, 160, 88, 0.9)',    // green
+                'rgba(180, 70, 150, 0.9)',   // magenta
+                'rgba(150, 120, 60, 0.9)',   // tan
+                'rgba(120, 100, 200, 0.9)',  // purple
+                'rgba(200, 70, 70, 0.9)',    // red
+            ];
+            // Immutable source (row = pattern, column per channel). Every re-sort
+            // is computed from this, so repeated toggles stay consistent.
+            const source = {
+                labels: data.labels.slice(),
+                data: data.series.map((s) => s.data.slice()),
+            };
+            const datasets = data.series.map((s, i) => ({
+                label: s.name,
+                data: s.data.slice(),
+                backgroundColor: palette[i % palette.length],
+                borderWidth: 0,
+            }));
+
+            function resort(chart) {
+                const visible = chart.data.datasets.map((_, di) => chart.isDatasetVisible(di));
+                const rowTotal = (r) => source.data.reduce(
+                    (t, col, di) => t + (visible[di] ? (col[r] || 0) : 0), 0);
+                const order = source.labels.map((_, r) => r)
+                    .sort((a, b) => rowTotal(b) - rowTotal(a));
+                chart.data.labels = order.map((r) => source.labels[r]);
+                chart.data.datasets.forEach((ds, di) => {
+                    ds.data = order.map((r) => source.data[di][r]);
+                });
+                chart.update();
+            }
+
+            return new Chart(document.getElementById(canvasId), {
+                type: 'bar',
+                data: { labels: data.labels.slice(), datasets: datasets },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    // axis:'y' — match the hovered row (pattern), not the x position,
+                    // so the tooltip stays on one bar as the mouse moves across it.
+                    interaction: { mode: 'index', intersect: false, axis: 'y' },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            onClick(e, legendItem, legend) {
+                                // Toggle visibility WITHOUT the default's own animated
+                                // update, then re-sort in one pass — so the segment
+                                // collapsing and the bars reordering animate together
+                                // (the default onClick would animate them one after the
+                                // other, leaving the hidden colour lingering).
+                                const chart = legend.chart;
+                                const i = legendItem.datasetIndex;
+                                chart.setDatasetVisibility(i, !chart.isDatasetVisible(i));
+                                resort(chart);
+                            },
+                        },
+                        tooltip: { callbacks: { label: cfg.tooltip } },
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: { display: true, text: cfg.axisTitle },
+                            ticks: cfg.ticks,
+                        },
+                        y: { stacked: true },
+                    },
+                },
+            });
+        }
+
+        makeTopStackedChart(
+            'topPatternsChart',
+            JSON.parse(document.getElementById('top-patterns-data').textContent),
+            {
+                axisTitle: 'Revenue ($)',
+                ticks: { callback: (v) => '$' + v.toLocaleString() },
+                tooltip: (ctx) => ctx.dataset.label + ': $' + ctx.parsed.x.toLocaleString(),
+            });
+
+        makeTopStackedChart(
+            'topCountChart',
+            JSON.parse(document.getElementById('top-count-data').textContent),
+            {
+                axisTitle: 'Units sold',
+                ticks: { precision: 0 },
+                tooltip: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.x.toLocaleString() + ' units',
+            });
+    </script>
+    <script>
+        // Click-to-sort for the Inventory table (Count numeric, Pattern Name text).
+        (function () {
+            const table = document.getElementById('inventoryTable');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            table.querySelectorAll('th.sortable').forEach((th) => {
+                let asc = true;
+                th.addEventListener('click', () => {
+                    const col = Array.from(th.parentNode.children).indexOf(th);
+                    const numeric = th.dataset.type === 'num';
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    rows.sort((a, b) => {
+                        const av = a.children[col].textContent.trim();
+                        const bv = b.children[col].textContent.trim();
+                        const cmp = numeric
+                            ? (parseFloat(av) || 0) - (parseFloat(bv) || 0)
+                            : av.localeCompare(bv, undefined, { sensitivity: 'base' });
+                        return asc ? cmp : -cmp;
+                    });
+                    rows.forEach((r) => tbody.appendChild(r));
+                    table.querySelectorAll('th .arrow').forEach((a) => { a.textContent = ''; });
+                    th.querySelector('.arrow').textContent = asc ? ' ▲' : ' ▼';
+                    asc = !asc;
+                });
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            const root = document.getElementById('chartCarousel');
+            if (!root) return;
+            const track = root.querySelector('.carousel-track');
+            const slides = Array.from(root.querySelectorAll('.carousel-slide'));
+            const dotsBox = root.querySelector('.carousel-dots');
+            let index = 0;
+
+            const dots = slides.map((_, i) => {
+                const d = document.createElement('button');
+                d.type = 'button';
+                d.className = 'dot';
+                d.setAttribute('aria-label', 'Go to chart ' + (i + 1));
+                d.addEventListener('click', () => go(i));
+                dotsBox.appendChild(d);
+                return d;
+            });
+
+            function go(i) {
+                index = (i + slides.length) % slides.length;
+                track.style.transform = 'translateX(' + (-index * 100) + '%)';
+                dots.forEach((d, j) => d.classList.toggle('active', j === index));
+                // Chart.js sizes to the container; nudge a resize when a slide
+                // becomes active so it's crisp regardless of prior layout.
+                if (window.Chart) {
+                    const canvas = slides[index].querySelector('canvas');
+                    const chart = canvas && Chart.getChart(canvas);
+                    if (chart) chart.resize();
+                }
+            }
+
+            root.querySelector('[data-carousel-prev]')
+                .addEventListener('click', () => go(index - 1));
+            root.querySelector('[data-carousel-next]')
+                .addEventListener('click', () => go(index + 1));
+
+            // Defer to after first layout so the active chart measures its real
+            // container width (avoids a transient 300px default on some loads).
+            requestAnimationFrame(() => go(0));
+        })();
+    </script>
+
+    <div class="group">
+        <h3>Purchase Orders</h3>
+        <div class="menu">
+            <a href="{% url 'newPO' %}"><button type="button">Enter a P.O.</button></a>
+            <a href="{% url 'editPO' %}"><button type="button">Edit P.O.</button></a>
+            <a href="{% url 'markPOPaid' %}"><button type="button">Mark P.O. Paid</button></a>
+            <a href="{% url 'shipBill' %}"><button type="button">Ship &amp; Bill</button></a>
+        </div>
+    </div>
+
+    <div class="group">
+        <h3>Patterns &amp; Inventory</h3>
+        <div class="menu">
+            <a href="{% url 'addPattern' %}"><button type="button">Add New Pattern</button></a>
+            <a href="{% url 'modifyInventory' %}"><button type="button">Modify Inventory</button></a>
+            <a href="{% url 'importAudit' %}"><button type="button">Import Audit</button></a>
+        </div>
+    </div>
+
+    <div class="group">
+        <h3>Printing</h3>
+        <div class="menu">
+            <a href="{% url 'newPrintJob' %}"><button type="button">New Print Job</button></a>
+            <a href="{% url 'printJobs' %}"><button type="button">View Print Jobs</button></a>
+        </div>
+    </div>
+
+    <div class="group">
+        <h3>Customers &amp; Expenses</h3>
+        <div class="menu">
+            <a href="{% url 'addCustomer' %}"><button type="button">Add New Customer</button></a>
+            <a href="{% url 'addExpense' %}"><button type="button">Enter Expenses</button></a>
+        </div>
+    </div>
+
+    <hr>
+    <p class="topbar">Logged in as <b>{{ user.username }}</b></p>
+    <a href="{% url 'admin:index' %}"><button type="button">Admin Panel</button></a>
+    <form method="post" action="{% url 'logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit">Log out</button>
+    </form>
+{% endblock %}

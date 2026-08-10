@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        table { border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #bbb; padding: 6px 10px; text-align: left; }
+        th { background: #f0f0f0; }
+        .paid-yes { color: green; }
+        .paid-no { color: #b00; }
+    </style>
+
+    <h2>Edit a Purchase Order</h2>
+    <p><a href="{% url 'index' %}">&larr; Back to Dashboard</a></p>
+
+    <form method="get">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by PO number" />
+        <button type="submit">Search</button>
+        {% if query %}<a href="{% url 'editPO' %}">Clear</a>{% endif %}
+    </form>
+
+    <table>
+        <tr>
+            <th>PO #</th>
+            <th>Customer</th>
+            <th>Date Ordered</th>
+            <th>Paid</th>
+            <th></th>
+        </tr>
+        {% for order in orders %}
+        <tr>
+            <td>{{ order.customers_po_number|default:order.order_id }}</td>
+            <td>{{ order.customer.customer_name|default:"—" }}</td>
+            <td>{{ order.date_ordered|default:"—" }}</td>
+            <td class="{% if order.paid %}paid-yes{% else %}paid-no{% endif %}">
+                {% if order.paid %}Yes{% else %}No{% endif %}
+            </td>
+            <td><a href="{% url 'editPODetail' order.order_id %}">Edit</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No purchase orders found.</td></tr>
+        {% endfor %}
+    </table>
+    <p><small>Showing up to 200 most recent orders. Use search to narrow down.</small></p>
+{% endblock %}

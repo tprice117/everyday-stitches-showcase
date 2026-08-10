@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        .hdr-fields p { margin: 8px 0; }
+        .meta { margin: 12px 0; }
+        .meta div { margin: 4px 0; }
+        .meta b { display: inline-block; min-width: 110px; }
+        .po { font-size: 1.15em; font-weight: 700; }
+        .status-pill {
+            display: inline-block; padding: 2px 9px; border-radius: 10px;
+            background: #eef2f6; border: 1px solid #cbd6e0; font-size: 0.9em;
+        }
+        .config-block {
+            border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px;
+            margin: 10px 0; background: #fafafa; max-width: 640px;
+        }
+        .saved { color: green; font-weight: bold; }
+        .errors { color: #b00; }
+        .hint { color: #555; }
+        .actions { margin: 14px 0; }
+        .actions button { padding: 9px 15px; margin-right: 8px; }
+        .submit-btn { margin-top: 14px; padding: 10px 16px; }
+    </style>
+
+    <h2>Print Job Review</h2>
+    <p><a href="{% url 'printJobs' %}">&larr; Back to Print Jobs</a></p>
+
+    {% if saved %}<p class="saved">Changes saved.</p>{% endif %}
+
+    <div class="meta">
+        <div class="po">{{ job.print_po_number }}</div>
+        <div><b>Status:</b> <span class="status-pill">{{ job.status.description|default:"—" }}</span>
+             <small class="hint">(advance with NEXT on the Print Jobs list)</small></div>
+        <div><b>Order date:</b> {{ job.date_submitted|default:"—" }}</div>
+    </div>
+
+    <div class="actions">
+        <a href="{% url 'printJobPDF' job.print_job_id %}" target="_blank">
+            <button type="button">Create PDF</button>
+        </a>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="errors">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="hdr-fields">
+            <p>{{ form.title.label_tag }} {{ form.title }} {{ form.title.errors }}</p>
+            <p>{{ form.date_requested.label_tag }} {{ form.date_requested }} {{ form.date_requested.errors }}</p>
+            <p>{{ form.total_cost.label_tag }} {{ form.total_cost }} {{ form.total_cost.errors }}</p>
+        </div>
+
+        <h3>SKUs and Order Quantities</h3>
+        {% include 'dashboard/_printJobItems.html' %}
+
+        <button type="submit" class="submit-btn">Save Changes</button>
+    </form>
+
+    <h3>Configuration</h3>
+    {% for cfg in configs %}
+        <div class="config-block">{{ cfg.html|safe }}</div>
+    {% empty %}
+        <p class="hint">No configuration details.</p>
+    {% endfor %}
+
+    <p class="hint"><small>
+        Configuration specs come from the print configuration itself — edit them in
+        the admin to change what prints on the PO.
+    </small></p>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        table { border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #bbb; padding: 6px 10px; text-align: left; }
+        th { background: #f0f0f0; }
+        input[type="number"] { width: 90px; }
+        .saved { color: green; font-weight: bold; }
+        .submit-btn { margin-top: 12px; padding: 10px 16px; }
+    </style>
+
+    <h2>Modify Inventory</h2>
+    <p><a href="{% url 'index' %}">&larr; Back to Dashboard</a></p>
+
+    {% if updated %}<p class="saved">Updated {{ updated }} pattern(s).</p>{% endif %}
+
+    <form method="get">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by SKU or name" />
+        <button type="submit">Search</button>
+        {% if query %}<a href="{% url 'modifyInventory' %}">Clear</a>{% endif %}
+    </form>
+
+    <form method="post">
+        {% csrf_token %}
+        <table>
+            <tr><th>SKU</th><th>Name</th><th>Inventory</th><th>Adjust (+/&minus;)</th></tr>
+            {% for p in patterns %}
+            <tr>
+                <td>{{ p.sku }}</td>
+                <td>{{ p.pattern_name }}</td>
+                <td><input type="number" name="inv_{{ p.pattern_id }}" value="{{ p.inventory }}"></td>
+                <td><input type="number" name="adj_{{ p.pattern_id }}" placeholder="+10 / -10"></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No patterns found.</td></tr>
+            {% endfor %}
+        </table>
+        {% if patterns %}
+            <button type="submit" class="submit-btn">Save Changes</button>
+        {% endif %}
+    </form>
+    <p><small>
+        <b>Inventory</b> sets the exact count. <b>Adjust (+/&minus;)</b> adds to or
+        subtracts from the current count (e.g. <code>+5</code> or <code>-3</code>).
+        If a row has an adjustment, it takes precedence over the Inventory value.
+        Only changed rows are updated.
+    </small></p>
+{% endblock %}

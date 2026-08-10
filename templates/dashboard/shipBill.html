@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        table { border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #bbb; padding: 6px 10px; text-align: left; }
+        th { background: #f0f0f0; }
+        tr.selectable:hover { background: #f6f9fc; cursor: pointer; }
+        .actions { margin: 6px 0 4px; }
+        .submit-btn { margin: 6px 8px 6px 0; padding: 10px 16px; }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .hint { color: #555; }
+    </style>
+
+    <h2>Ship &amp; Bill</h2>
+    <p><a href="{% url 'index' %}">&larr; Back to Dashboard</a></p>
+    <p class="hint">
+        Select a purchase order that hasn't shipped yet, then create its invoice or
+        packing slip. 
+        <br><b>Create Invoice</b> sets the ship date and invoice date to
+        today, applies any late fee (1.5% of the order per 30 days past the ship
+        date), and opens the invoice PDF.
+        <br><b>Create Packing Slip</b> just opens the
+        packing slip and marks the order shipped.
+        <br> Tick <b>Show all unpaid POs</b> to
+        switch the list from unshipped orders to every unpaid order
+    </p>
+
+    <form method="get">
+        <input type="text" name="po" value="{{ po_query }}" size="24"
+               placeholder="Search by PO number" />
+        <input type="text" name="cust" value="{{ cust_query }}" size="24"
+               placeholder="Search by customer name" />
+        <button type="submit">Search</button>
+        {% if po_query or cust_query %}<a href="{% url 'shipBill' %}">Clear</a>{% endif %}
+        <label style="margin-left:16px;">
+            <input type="checkbox" name="unpaid" value="1"
+                   onchange="this.form.submit()" {% if show_unpaid %}checked{% endif %}>
+            Show all unpaid POs
+        </label>
+    </form>
+
+    <form method="post" id="shipbill-form">
+        {% csrf_token %}
+        {% if orders %}
+        <div class="actions">
+            <button type="submit" name="action" value="packing" class="submit-btn" id="create-packing" formtarget="_blank" disabled>Create Packing Slip</button>
+            <button type="submit" name="action" value="invoice" class="submit-btn" id="create-invoice" formtarget="_blank" disabled>Create Invoice</button>
+        </div>
+        {% endif %}
+        <table>
+            <tr>
+                <th>Select</th>
+                <th>PO #</th>
+                <th>Customer</th>
+                <th>Date Ordered</th>
+                <th>Ship Date</th>
+            </tr>
+            {% for order in orders %}
+            <tr class="selectable">
+                <td><input type="radio" name="order_id" value="{{ order.order_id }}" required></td>
+                <td>{{ order.customers_po_number|default:order.order_id }}</td>
+                <td>{{ order.customer.customer_name|default:"—" }}</td>
+                <td>{{ order.date_ordered|default:"—" }}</td>
+                <td>{{ order.date_shipped|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">
+                {% if show_unpaid %}No unpaid purchase orders. 🎉{% else %}No unshipped purchase orders. 🎉{% endif %}
+            </td></tr>
+            {% endfor %}
+        </table>
+    </form>
+    <p><small>
+        Showing up to 200 {% if show_unpaid %}unpaid orders{% else %}orders without a ship date{% endif %}.
+    </small></p>
+
+    <script>
+        (function () {
+            const form = document.getElementById('shipbill-form');
+            if (!form) return;
+            const btns = [document.getElementById('create-invoice'),
+                          document.getElementById('create-packing')];
+            // Enable the buttons once a PO is chosen; clicking a row selects its radio.
+            form.addEventListener('change', () => {
+                const picked = !!form.querySelector('input[name="order_id"]:checked');
+                btns.forEach((b) => { if (b) b.disabled = !picked; });
+            });
+            form.querySelectorAll('tr.selectable').forEach((row) => {
+                row.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'INPUT') return;
+                    const radio = row.querySelector('input[type="radio"]');
+                    if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change', { bubbles: true })); }
+                });
+            });
+        })();
+    </script>
+{% endblock %}

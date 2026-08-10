@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    .item_entry {margin-bottom: 10px;}
+</style>   
+<form name="POForm" method="post">
+    {% csrf_token %}
+    {{ form.submission_date.label_tag }} {{ form.submission_date }}
+    {{ form.distributor.label_tag }} {{ form.distributor }}
+    {{ form.po_number.label_tag }} {{ form.po_number }}
+    <br><h2>Select Items</h2>
+    <div id="product-section">
+        <div class="product-entry">
+            {{ form.product.label_tag }}
+            <select name="product" id="product-dropdown">
+                <option value="">Select an Item</option>
+                {% for product in form.product.field.queryset %}
+                    <option value="{{product.sku}}">{{ product.name}}</option>
+                {% endfor %}
+            </select>
+            {{ form.quantity.label_tag }} {{ form.quantity }}
+            <button type="button" onclick="addProductEntry()">Add Another Item</button>
+        </div>
+    </div>
+
+    <! hidden fields to store selections />
+    <input type="hidden" name="product" id="products" />
+    <input type="hidden" name="quantity" id="quantities" />
+    <br><br>
+    <button type="submit">Submit</button>
+</form>
+
+<script>
+    let productCounter = 0;
+    function addProductEntry() {
+        const productSection = document.getElementById('product-section')
+        const newEntry = document.createElement('div')
+        newEntry.classList.add('product-entry')
+        newEntry.innerHTML = `
+            <select name="product" id="product-dropdown">
+                <option value="">Select an Item</option>
+                {% for product in form.product.field.queryset %}
+                    <option value="{{product.sku}}">{{ product.name}}</option>
+                {% endfor %}
+            </select>
+            {{ form.quantity.label_tag }} {{ form.quantity }}
+            <button type="button" onclick="addProductEntry()">Add Another Item</button>
+        `;
+        productSection.appendChild(newEntry);
+        productCounter++;
+    }
+    function removeProductEntry(button){
+        button.parentElement.remove();
+    }
+
+    document.querySelector('form').addEventListener('submit', function(event){
+        const products = [];
+        const quantities = [];
+        const entries = document.querySelector('.product-entry');
+        entries.pop();
+        entries.forEach(function(entry){
+            const productSelect = entry.querySelector('select[name="product"]');
+            const quantityInput = entry.querySelector('input[name="quantity"]');
+            if (productSelect.value !== null && productSelect != '' && quantityInput.value){
+                products.push(productSelect.value);
+                quantities.push(quantityInput.value);
+            }    
+        });
+        
+        //products.join(',');
+        //quantities.join(',');
+        products = products.slice(0,-1);
+
+        document.getElementById('product').value = products;
+        document.getElementById('quantity').value = quantities;
+        
+    });
+</script>
+{% endblock %}

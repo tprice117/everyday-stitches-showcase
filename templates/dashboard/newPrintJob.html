@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        .hdr-fields p { margin: 8px 0; }
+        .saved { color: green; font-weight: bold; }
+        .errors { color: #b00; }
+        .hint { color: #555; }
+        .po-badge {
+            display: inline-block; padding: 4px 10px; border: 1px solid #888;
+            border-radius: 6px; background: #f4f4f4; font-weight: 700;
+        }
+        .submit-btn { margin-top: 14px; padding: 10px 16px; }
+    </style>
+
+    <h2>New Print Job</h2>
+    <p><a href="{% url 'index' %}">&larr; Back to Dashboard</a>
+       &nbsp;|&nbsp; <a href="{% url 'printJobs' %}">View Print Jobs</a></p>
+
+    {% if saved %}<p class="saved">Created print job {{ saved }}.</p>{% endif %}
+    {% if reorder_source %}
+        <p class="hint">Reordering from <b>{{ reorder_source.print_po_number }}</b> —
+        items carried over. A new PO number and dates will be assigned on save.</p>
+    {% endif %}
+
+    <p class="hint">
+        The PO number is assigned automatically on save. Pick a pattern (or leave it
+        on <b>OTHER</b> for a one-off item and type a name), choose a configuration,
+        and set the quantity. Saved artwork links fill in automatically and any link
+        you change is remembered for next time.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="errors">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="hdr-fields">
+            <p>PO number: <span class="po-badge">{{ next_po }}</span>
+               <small class="hint">(assigned on save)</small></p>
+            <p>{{ form.title.label_tag }} {{ form.title }} {{ form.title.errors }}</p>
+            <p>{{ form.date_requested.label_tag }} {{ form.date_requested }} {{ form.date_requested.errors }}</p>
+            <p>{{ form.total_cost.label_tag }} {{ form.total_cost }} {{ form.total_cost.errors }}</p>
+        </div>
+
+        <h3>Items</h3>
+        {% include 'dashboard/_printJobItems.html' %}
+
+        <button type="submit" class="submit-btn">Create Print Job</button>
+    </form>
+{% endblock %}

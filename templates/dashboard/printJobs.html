@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        table { border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #bbb; padding: 6px 10px; text-align: left; }
+        th { background: #f0f0f0; }
+        .hint { color: #555; }
+        .po { font-weight: 100; white-space: nowrap; }
+        .status-pill {
+            display: inline-block; padding: 2px 9px; border-radius: 10px;
+            background: #eef2f6; border: 1px solid #cbd6e0; font-size: 0.9em;
+        }
+        .status-pill.alert { background: #fdecea; border-color: #f0b3ad; color: #8a1c12; }
+        .status-pill.done  { background: #e9f6ec; border-color: #b3ddc0; color: #14622c; }
+        .act button, .act a button { padding: 5px 12px; }
+        .act form { display: inline; }
+        /* Undo is a recovery action, not a primary one — keep it quiet. */
+        .undo-btn { color: #6b7280; }
+        .undo-btn:hover { color: #b3261e; border-color: #b3261e; }
+        .overdue { color: #b00; font-weight: 600; }
+
+        .atlas {
+            max-width: 900px; margin: 14px 0; padding: 12px 16px;
+            border: 1px solid #ddd; border-radius: 8px; background: #fafafa;
+        }
+        .atlas .title { font-weight: 700; color: #333; margin-bottom: 8px; }
+        .atlas .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+        .atlas .step {
+            display: inline-block; padding: 3px 10px; border-radius: 10px;
+            background: #eef2f6; border: 1px solid #cbd6e0; font-size: 0.9em;
+            white-space: nowrap;
+        }
+        .atlas .step.alert { background: #fdecea; border-color: #f0b3ad; color: #8a1c12; }
+        .atlas .step.done  { background: #e9f6ec; border-color: #b3ddc0; color: #14622c; }
+        .atlas .arrow { color: #999; }
+        .atlas .legend { margin-top: 9px; font-size: 0.85em; color: #555; line-height: 1.7; }
+        .atlas .swatch {
+            display: inline-block; width: 11px; height: 11px; border-radius: 3px;
+            vertical-align: -1px; margin-right: 3px;
+        }
+        .atlas .swatch.alert { background: #fdecea; border: 1px solid #f0b3ad; }
+        .atlas .swatch.done  { background: #e9f6ec; border: 1px solid #b3ddc0; }
+    </style>
+
+    <h2>Print Jobs</h2>
+    <p><a href="{% url 'index' %}">&larr; Back to Dashboard</a>
+       &nbsp;|&nbsp; <a href="{% url 'newPrintJob' %}">New Print Job</a></p>
+
+    <div class="atlas">
+        <div class="title">Status flow</div>
+        <div class="flow">
+            {% for s in statuses %}
+                <span class="step {% if s.status_id == final_status_id %}done{% elif s.alert %}alert{% endif %}">
+                    {{ s.sort_order }}. {{ s.description }}
+                </span>
+                {% if not forloop.last %}<span class="arrow">&rarr;</span>{% endif %}
+            {% endfor %}
+        </div>
+        <div class="legend">
+            Each job moves one step at a time the button on its row names the step it moves to.<br>
+            <span class="swatch alert"></span> shows a reminder banner on the dashboard while a job sits here.
+            &nbsp;·&nbsp;
+            <span class="swatch done"></span> final step receiving the job adds each item's
+            quantity to that pattern's inventory, and the button becomes <b>REORDER</b>.
+        </div>
+    </div>
+
+    <form method="get">
+        <label>
+            <input type="checkbox" name="all" value="1"
+                   onchange="this.form.submit()" {% if show_all %}checked{% endif %}>
+            Show all print jobs (including received)
+        </label>
+    </form>
+
+    <table>
+        <tr>
+            <th>Print PO#</th>
+            <th>Description</th>
+            <th>Requested</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+        {% for job in jobs %}
+        <tr>
+            <td class="po">{{ job.print_po_number }}</td>
+            <td>{{ job.title }}</td>
+            <td>{{ job.date_requested|default:"—" }}</td>
+            <td>
+                <span class="status-pill {% if job.status_id == final_status_id %}done{% elif job.status.alert %}alert{% endif %}">
+                    {{ job.status.description|default:"—" }}
+                </span>
+            </td>
+            <td class="act">
+                {% if job.next_status_obj %}
+                    <form method="post" action="{% url 'printJobNext' job.print_job_id %}{% if show_all %}?all=1{% endif %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                            {% if job.next_is_final %}
+                                title="Receives the job and adds each item's quantity to that pattern's inventory."
+                            {% else %}
+                                title="Moves this job to “{{ job.next_status_obj.description }}”."
+                            {% endif %}>
+                            Move to: {{ job.next_status_obj.description }} &rarr;
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'newPrintJob' %}?reorder={{ job.print_job_id }}"><button type="button"
+                        title="Start a new print job from this one, with a new PO number and dates.">REORDER</button></a>
+                {% endif %}
+                {% if job.prev_status_obj %}
+                    <form method="post" action="{% url 'printJobPrev' job.print_job_id %}{% if show_all %}?all=1{% endif %}"
+                        {% if job.undo_reverses_inventory %}
+                            onsubmit="return confirm('Undo receiving this job?\n\nIt moves back to “{{ job.prev_status_obj.description|escapejs }}” and REMOVES each item\'s quantity from that pattern\'s inventory.');"
+                        {% endif %}>
+                        {% csrf_token %}
+                        <button type="submit" class="undo-btn"
+                            {% if job.undo_reverses_inventory %}
+                                title="Undo receiving: moves back to “{{ job.prev_status_obj.description }}” and removes the received quantities from inventory."
+                            {% else %}
+                                title="Undo the last step: moves this job back to “{{ job.prev_status_obj.description }}”."
+                            {% endif %}>
+                            &larr; Undo
+                        </button>
+                    </form>
+                {% endif %}
+                <a href="{% url 'printJobDetail' job.print_job_id %}"><button type="button"
+                    title="View, edit, and create the PDF for this PO.">REVIEW</button></a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">
+            {% if show_all %}No print jobs yet.{% else %}No open print jobs — everything has been received. 🎉{% endif %}
+        </td></tr>
+        {% endfor %}
+    </table>
+
+    <p><small class="hint">
+        {% if show_all %}
+            All print jobs, newest order date first.
+        {% else %}
+            Print jobs not yet received, soonest requested date first.
+        {% endif %}
+        One-off (OTHER) items aren't added to inventory when a job is received,
+        since they aren't tracked patterns.
+    </small></p>
+{% endblock %}

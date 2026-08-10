@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        table { border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #bbb; padding: 6px 10px; text-align: left; }
+        th { background: #f0f0f0; }
+        .confirm { color: green; font-weight: bold; }
+        .submit-btn { margin-top: 12px; padding: 10px 16px; }
+    </style>
+
+    <h2>Mark Purchase Order as Paid</h2>
+    <p><a href="{% url 'index' %}">&larr; Back to Dashboard</a></p>
+
+    {% if marked %}
+        <p class="confirm">Marked {{ marked }} purchase order(s) as paid.</p>
+    {% endif %}
+
+    <form method="get">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by PO number" />
+        <button type="submit">Search</button>
+        {% if query %}<a href="{% url 'markPOPaid' %}">Clear</a>{% endif %}
+    </form>
+
+    <form method="post">
+        {% csrf_token %}
+        <table>
+            <tr>
+                <th>Paid?</th>
+                <th>PO #</th>
+                <th>Customer</th>
+                <th>Date Ordered</th>
+                <th>Date Invoiced</th>
+                <th>Due Date</th>
+            </tr>
+            {% for order in orders %}
+            <tr>
+                <td><input type="checkbox" name="order_ids" value="{{ order.order_id }}"></td>
+                <td>{{ order.customers_po_number|default:order.order_id }}</td>
+                <td>{{ order.customer.customer_name|default:"—" }}</td>
+                <td>{{ order.date_ordered|default:"—" }}</td>
+                <td>{{ order.date_invoiced|default:"—" }}</td>
+                <td>{{ order.due_date|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">No unpaid purchase orders. 🎉</td></tr>
+            {% endfor %}
+        </table>
+        {% if orders %}
+            <button type="submit" class="submit-btn">Mark Selected as Paid</button>
+        {% endif %}
+    </form>
+    <p><small>Showing up to 200 unpaid orders. Marking sets the payment date to today.</small></p>
+{% endblock %}

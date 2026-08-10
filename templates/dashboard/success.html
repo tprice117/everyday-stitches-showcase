@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        .actions button { margin: 6px 6px 6px 0; padding: 8px 14px; }
+        #dl-status { color: green; margin-left: 8px; }
+    </style>
+
+    <h1>Purchase Order Saved</h1>
+
+    <div class="actions">
+        <!-- View the invoice in a new tab -->
+        <a href="{% url 'generatePDF' invoice.order_id %}" target="_blank">
+            <button type="button">View Invoice</button>
+        </a>
+
+        <!-- Download the invoice, letting the user choose where to save it -->
+        <button type="button" id="download-invoice"
+                data-url="{% url 'generatePDF' invoice.order_id %}"
+                data-filename="{{ invoice_filename }}">
+            Download Invoice
+        </button>
+        <span id="dl-status"></span>
+    </div>
+
+    <br>
+    <a href="{% url 'index' %}"><button type="button">&larr; Back to Dashboard</button></a>
+
+    <script>
+        document.getElementById('download-invoice').addEventListener('click', async function () {
+            const url = this.dataset.url;
+            const filename = this.dataset.filename;
+            const status = document.getElementById('dl-status');
+            status.textContent = 'Preparing…';
+
+            let blob;
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error('Server returned ' + resp.status);
+                blob = await resp.blob();
+            } catch (err) {
+                status.style.color = 'red';
+                status.textContent = 'Could not generate the invoice.';
+                return;
+            }
+
+            // Chromium (Chrome/Edge) over HTTPS: native "Save As" Explorer dialog
+            if (window.showSaveFilePicker) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: filename,
+                        types: [{ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    status.style.color = 'green';
+                    status.textContent = 'Saved.';
+                    return;
+                } catch (err) {
+                    if (err.name === 'AbortError') { status.textContent = ''; return; } // user cancelled
+                    // otherwise fall through to the normal download
+                }
+            }
+
+            // Fallback (other browsers): download to the default Downloads folder
+            const objectUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(objectUrl);
+            status.style.color = 'green';
+            status.textContent = 'Downloaded.';
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,9 @@
+# Shared Lambda layer dependencies for the sync functions.
+#
+# NOTE: these only reach a deployed Lambda. The scheduled import currently runs
+# from cron on EC2 using the Django app's venv, so anything here that the sync
+# imports at runtime must ALSO be in ../../requirements.txt (that's how
+# `requests` went missing on the server once).
+requests==2.32.3
+psycopg2-binary==2.9.12
+# boto3 is provided by the Lambda runtime; no need to bundle it.

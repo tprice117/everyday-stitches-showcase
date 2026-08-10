@@ -1,0 +1,104 @@
+{# Editable print-job line items. Shared by the create and review screens.
+   Expects: prefill_rows, patterns, print_items, pattern_url_map. #}
+<style>
+    table.items { border-collapse: collapse; margin-top: 10px; }
+    table.items th, table.items td { border: 1px solid #bbb; padding: 6px 8px; text-align: left; }
+    table.items th { background: #f0f0f0; }
+    input.url { width: 240px; }
+    input.desc { width: 160px; }
+    input.qty { width: 70px; }
+    .readonlyish { background: #eee; color: #888; }
+</style>
+
+<table class="items">
+    <thead>
+        <tr>
+            <th>Pattern</th><th>Name (for OTHER)</th><th>Configuration</th>
+            <th>Artwork link</th><th>Qty</th><th></th>
+        </tr>
+    </thead>
+    <tbody id="item-rows">
+        {% for row in prefill_rows %}
+        <tr class="item-row">
+            <td>
+                <select name="pj_pattern" class="pattern">
+                    <option value="">— OTHER (one-off) —</option>
+                    {% for p in patterns %}
+                        <option value="{{ p.pattern_id }}" {% if row.pattern_id == p.pattern_id %}selected{% endif %}>{{ p.sku }} — {{ p.pattern_name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td><input type="text" name="pj_desc" class="desc" placeholder="Item name" value="{{ row.description }}"></td>
+            <td>
+                <select name="pj_config" class="config">
+                    <option value="">— choose —</option>
+                    {% for pi in print_items %}
+                        <option value="{{ pi.line_id }}" {% if row.line_id == pi.line_id %}selected{% endif %}>{{ pi.config|default:pi.description }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td><input type="text" name="pj_url" class="url" placeholder="https://…" value="{{ row.url }}" {% if row.url %}data-touched="1"{% endif %}></td>
+            <td><input type="number" name="pj_qty" class="qty" min="1" value="{{ row.qty }}"></td>
+            <td><button type="button" class="remove-row">Remove</button></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p><button type="button" id="add-row">Add Another Item</button></p>
+
+{{ pattern_url_map|json_script:"pattern-url-map" }}
+
+<script>
+    (function () {
+        const urlMap = JSON.parse(document.getElementById('pattern-url-map').textContent);
+        const tbody = document.getElementById('item-rows');
+
+        // Fill the artwork link from the saved pattern+configuration pairing,
+        // unless the user has typed their own link in that row.
+        function syncRow(row) {
+            const pattern = row.querySelector('.pattern').value;
+            const config = row.querySelector('.config').value;
+            const urlInput = row.querySelector('.url');
+            const descInput = row.querySelector('.desc');
+
+            // "Name" only applies to one-off (OTHER) items.
+            if (pattern) {
+                descInput.value = '';
+                descInput.readOnly = true;
+                descInput.classList.add('readonlyish');
+            } else {
+                descInput.readOnly = false;
+                descInput.classList.remove('readonlyish');
+            }
+
+            if (urlInput.dataset.touched === '1') return;
+            const saved = (urlMap[pattern] || {})[config];
+            urlInput.value = saved || '';
+        }
+
+        function wire(row) {
+            row.querySelector('.pattern').addEventListener('change', () => syncRow(row));
+            row.querySelector('.config').addEventListener('change', () => syncRow(row));
+            row.querySelector('.url').addEventListener('input', function () {
+                this.dataset.touched = '1';
+            });
+            row.querySelector('.remove-row').addEventListener('click', () => {
+                if (tbody.querySelectorAll('.item-row').length > 1) row.remove();
+            });
+            syncRow(row);
+        }
+
+        document.getElementById('add-row').addEventListener('click', () => {
+            const row = tbody.querySelector('.item-row').cloneNode(true);
+            row.querySelectorAll('input').forEach((i) => {
+                i.value = '';
+                delete i.dataset.touched;
+            });
+            row.querySelectorAll('select').forEach((s) => { s.selectedIndex = 0; });
+            tbody.appendChild(row);
+            wire(row);
+        });
+
+        tbody.querySelectorAll('.item-row').forEach(wire);
+    })();
+</script>

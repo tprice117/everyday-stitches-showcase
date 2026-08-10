@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        .audit table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        .audit th, .audit td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 14px; }
+        .audit th { background: #f4f4f4; }
+        .audit td.num { text-align: right; }
+        .filters { margin: 10px 0; }
+        .filters a { margin-right: 12px; text-decoration: none; }
+        .filters a.on { font-weight: bold; text-decoration: underline; }
+        .sku { font-family: monospace; font-weight: bold; }
+        .raw { font-family: monospace; color: #666; font-size: 12px; }
+        .pill { padding: 1px 7px; border-radius: 10px; font-size: 12px; }
+        .pill.open { background: #fde2e2; color: #a00; }
+        .pill.resolved { background: #e2f5e2; color: #060; }
+        .pill.ignored { background: #eee; color: #666; }
+        .empty { color: #666; font-style: italic; margin-top: 14px; }
+        .hint { color: #666; font-size: 13px; max-width: 70ch; }
+        form.inline { display: inline; }
+        form.inline button { font-size: 12px; padding: 2px 8px; }
+    </style>
+
+    <h2>Import Audit</h2>
+    <p><a href="{% url 'index' %}">&larr; Back to Dashboard</a></p>
+
+    <p class="hint">
+        SKUs the sales-sync import could not match, usually a bundle
+        or a pattern, so their line items were skpped. Fix an entry by adding
+        the missing pattern (or bundle definition), then mark it resolved. Mark
+        things you never intend to import as <b>ignored</b>, this is cached for later use
+        <br>Problematic SKUs seem like: Rulers and Kits also -BDL
+    </p>
+
+    <div class="filters">
+        <a href="?status=open"     class="{% if status == 'open' %}on{% endif %}">Open ({{ counts.open }})</a>
+        <a href="?status=resolved" class="{% if status == 'resolved' %}on{% endif %}">Resolved ({{ counts.resolved }})</a>
+        <a href="?status=ignored"  class="{% if status == 'ignored' %}on{% endif %}">Ignored ({{ counts.ignored }})</a>
+        <a href="?status=all"      class="{% if status == 'all' %}on{% endif %}">All</a>
+    </div>
+
+    {% if status == 'open' and counts.open %}
+        <p class="hint">Skipped value across open issues: <b>${{ total_open_value|floatformat:2 }}</b></p>
+    {% endif %}
+
+    <div class="audit">
+    {% if rows %}
+        <table>
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Description</th>
+                    <th>Channel</th>
+                    <th class="num">Lines</th>
+                    <th class="num">Qty</th>
+                    <th class="num">Value</th>
+                    <th>Sample order</th>
+                    <th>Last seen</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in rows %}
+                <tr>
+                    <td>
+                        <span class="sku">{{ r.normalized_sku }}</span>
+                        {% if r.source_sku and r.source_sku != r.normalized_sku %}
+                            <br><span class="raw">raw: {{ r.source_sku }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.description|default:"—" }}</td>
+                    <td>{{ r.source_id }}</td>
+                    <td class="num">{{ r.occurrences }}</td>
+                    <td class="num">{{ r.total_quantity }}</td>
+                    <td class="num">${{ r.total_value|floatformat:2 }}</td>
+                    <td>{{ r.sample_order|default:"—" }}</td>
+                    <td>{{ r.last_seen|date:"Y-m-d H:i" }}</td>
+                    <td><span class="pill {{ r.status }}">{{ r.get_status_display }}</span></td>
+                    <td>
+                        {% if r.status != 'resolved' %}
+                        <form class="inline" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="issue_id" value="{{ r.issue_id }}">
+                            <input type="hidden" name="status" value="{{ status }}">
+                            <button type="submit" name="action" value="resolved">Resolve</button>
+                        </form>
+                        {% endif %}
+                        {% if r.status != 'ignored' %}
+                        <form class="inline" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="issue_id" value="{{ r.issue_id }}">
+                            <input type="hidden" name="status" value="{{ status }}">
+                            <button type="submit" name="action" value="ignored">Ignore</button>
+                        </form>
+                        {% endif %}
+                        {% if r.status != 'open' %}
+                        <form class="inline" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="issue_id" value="{{ r.issue_id }}">
+                            <input type="hidden" name="status" value="{{ status }}">
+                            <button type="submit" name="action" value="open">Reopen</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty">
+            {% if status == 'open' %}Nothing open — every imported SKU found a pattern or bundle.
+            {% else %}No entries with this status.{% endif %}
+        </p>
+    {% endif %}
+    </div>
+{% endblock %}
