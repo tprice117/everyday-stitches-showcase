@@ -1,0 +1,53 @@
+Copyright (c) 2026 Tyler Price. All rights reserved.
+
+This repository and everything in it (the "Software"), including source code,
+database schema and SQL, templates, stylesheets, documentation, and diagrams,
+is proprietary. It is published for portfolio and evaluation purposes only.
+It is NOT open source, and no license to it is granted except as stated below.
+
+PERMITTED USE
+
+You may view and read the Software on GitHub, and make the transient copies
+that viewing requires (for example, in a browser cache or a GitHub fork made
+under GitHub's Terms of Service), solely to evaluate the author's work.
+
+PROHIBITED USE
+
+Without the prior written permission of the copyright holder, you may not:
+
+  1. copy, reproduce, or download the Software for any purpose other than the
+     viewing permitted above;
+  2. use, run, deploy, or host the Software, in whole or in part, for any
+     personal, commercial, or internal business purpose;
+  3. modify, adapt, translate, or create derivative works based on the
+     Software, including reimplementing its code, schema, or documented
+     designs with only superficial changes;
+  4. distribute, publish, sublicense, sell, lease, or otherwise make the
+     Software, or any work derived from it, available to anyone else;
+  5. use the Software, in whole or in part, to train, fine-tune, or evaluate
+     machine-learning or AI models; or
+  6. remove or alter this notice or any copyright notice in the Software.
+
+THIRD-PARTY MATERIAL
+
+Third-party libraries named in requirements.txt and elsewhere are the
+property of their respective owners and remain under their own licenses;
+nothing here limits your rights under those licenses. The "Every Day Stitches"
+name, logo, and other business branding belong to their owner, are not
+licensed by this notice, and may not be used.
+
+NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+TERMINATION
+
+Any use in breach of this notice is unlicensed and may infringe copyright.
+Any permission granted here ends automatically upon such a breach.
+
+For licensing or permission requests, contact the copyright holder through
+github.com/tprice117.

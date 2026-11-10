@@ -144,3 +144,9 @@ not via Django migrations.
 *Internal business application, shared here as a portfolio showcase. Credentials,
 infrastructure identifiers, and the client's real contact details have been removed
 or replaced with placeholders.*
+
+## License
+
+Copyright © 2026 Tyler Price. All rights reserved. This code is published for
+viewing only: it is not open source, and you may not copy, use, modify, or
+redistribute it without written permission. See [LICENSE](LICENSE).
